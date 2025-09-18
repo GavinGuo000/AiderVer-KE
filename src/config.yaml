@@ -1,0 +1,43 @@
+model:
+  embedding_model: all-MiniLM-L6-v2
+
+agent:
+  default_schema: The final extraction result should be formatted as a JSON object.
+  default_ner: Extract the Named Entities in the given text.
+  default_re: Extract Relationships between Named Entities in the given text.
+  default_ee: Extract the Events in the given text.
+  default_triple: Extract the Triples (subject, relation, object) from the given text, hope that all the relationships for each entity can be extracted.
+  chunk_token_limit: 1024
+  
+  aider_agent:
+    auto_decision: true
+    confidence_threshold: 0.6
+    max_search_terms: 3
+    
+  mode:
+    quick:
+      agents: ["schema_agent", "extraction_agent"]
+    standard:
+      agents: ["schema_agent", "extraction_agent"]
+    customized:
+      agents: []
+    enhanced:
+      agents: ["schema_agent", "aider_agent", "extraction_agent"]
+      schema_agent: get_deduced_schema
+      aider_agent: enhance_with_knowledge
+      extraction_agent: extract_information_with_case
+      reflection_agent: reflect_with_case
+      verifier_agent: verify_extraction_result
+    ablation_no_aider:
+      schema_agent: get_deduced_schema
+      extraction_agent: extract_information_with_case
+      reflection_agent: reflect_with_case
+      verifier_agent: verify_extraction_result
+    ablation_no_verifier:
+      schema_agent: get_deduced_schema
+      aider_agent: enhance_with_knowledge
+      extraction_agent: extract_information_with_case
+      reflection_agent: reflect_with_case
+    minimal:
+      extraction_agent: extract_information_direct
+      verifier_agent: verify_extraction_result
