@@ -84,37 +84,6 @@ python run_ner.py
 python run_re.py
 ```
 
-## 📁 Project Structure
-
-AiderVer-KE/
-├── data/                          # Data directory
-│   ├── datasets/                  # Datasets
-│   │   ├── CrossNER/             # CrossNER dataset
-│   │   └── NYT11/                # NYT11 dataset
-│   └── input_files/              # Input file examples
-├── experiments/                   # Experiment scripts
-│   ├── run_ner.py                # NER experiments
-│   └── run_re.py                 # Relation extraction experiments
-├── src/                          # Source code
-│   ├── config.yaml               # Configuration file
-│   ├── pipeline.py               # Main pipeline
-│   ├── run.py                    # Entry point
-│   ├── models/                   # Model definitions
-│   │   ├── llm_def.py           # LLM definitions
-│   │   ├── prompt_template.py    # Prompt templates
-│   │   └── vllm_serve.py        # VLLM service
-│   ├── modules/                  # Agent modules
-│   │   ├── aider_agent.py       # Aider agent
-│   │   ├── extraction_agent.py  # Extraction agent
-│   │   ├── reflection_agent.py  # Reflection agent
-│   │   ├── schema_agent.py      # Schema agent
-│   │   └── verifier_agent.py    # Verifier agent
-│   ├── construct/               # Knowledge graph construction
-│   └── utils/                   # Utility functions
-├── requirements.txt             # Dependencies list
-└── README.md                   # Project documentation
-
-
 ## 🔧 Configuration Guide
 
 ### Model Configuration
