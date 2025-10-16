@@ -29,11 +29,6 @@ AiderVer-KE is a multi-agent collaborative knowledge extraction framework design
 - Support for VLLM service deployment
 - Support for LoRA fine-tuned models
 
-### 📊 Knowledge Graph Construction
-- Automatic knowledge graph construction
-- Support for Neo4j graph database
-- Visualized knowledge graph display
-
 ## 🚀 Quick Start
 
 ### Requirements
@@ -124,7 +119,6 @@ agent:
 | NER | Named Entity Recognition | Identify person names, locations, organizations, etc. |
 | RE | Relation Extraction | Extract semantic relationships between entities |
 | EE | Event Extraction | Identify and extract event information |
-| Triple | Triple Extraction | Extract (subject, relation, object) triples |
 
 ## 🎯 Experiments and Evaluation
 
@@ -133,23 +127,11 @@ The project supports experiments on multiple standard datasets:
 - **CrossNER**: Cross-domain Named Entity Recognition
 - **NYT11**: New York Times Relation Extraction Dataset
 
-## 🤝 Contributing
-
-We welcome community contributions! Please follow these steps:
-
-1. Fork this repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
-
-- Thanks to the ZJUNLP team for their contributions
 - Thanks to the open-source community for providing excellent tools and libraries
 - Thanks to all contributors for their support
 
