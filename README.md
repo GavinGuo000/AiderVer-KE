@@ -5,9 +5,17 @@
 
 ## 📖 Project Overview
 
-AiderVer-KE is a multi-agent collaborative knowledge extraction framework designed to improve the accuracy and efficiency of knowledge extraction tasks through the coordinated work of five specialized agents. Unlike traditional single-agent or simple multi-agent approaches, AiderVer-KE introduces a **Probe Agent** for independent quality inspection and a **Collaborative Memory** module for cross-agent error experience sharing, enabling the system to self-evolve and reduce repeated extraction errors over time.
+AiderVer-KE is a multi-agent collaborative knowledge extraction framework that coordinates five specialized agents to complete the end-to-end extraction pipeline:
 
-The framework supports various knowledge extraction tasks including Named Entity Recognition (NER), Relation Extraction (RE), Event Extraction (EE), and Triple Extraction.
+1. **Schema Agent** — Parses user-defined entity/relation specs and generates closed-set extraction schemas
+2. **Aider Agent** — Retrieves external background knowledge via RAG to assist entity disambiguation
+3. **Extraction Agent** — Executes structured information extraction under schema constraints, enhanced with historical error context
+4. **Probe Agent** — Performs independent quality inspection, generates structured defect feedback without modifying results
+5. **Verifier Agent** — Conducts triple-check verification (entity truthfulness, type consistency, graph integrity) and triggers re-extraction on failure
+
+The framework also introduces a **Collaborative Memory** module for cross-agent error experience sharing, enabling the system to self-evolve and reduce repeated extraction errors over time.
+
+Supported tasks: Named Entity Recognition (NER), Relation Extraction (RE), Event Extraction (EE), and Triple Extraction.
 
 ## ✨ Core Features
 
