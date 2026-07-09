@@ -35,15 +35,13 @@ def main():
     pipeline = Pipeline(model)
     # Extraction config
     extraction_config = config['extraction']
-    # constuct config
+    # construct config
     if 'construct' in config:
         construct_config = config['construct']
         result, trajectory, _, _ = pipeline.get_extract_result(task=extraction_config['task'], instruction=extraction_config['instruction'], text=extraction_config['text'], output_schema=extraction_config['output_schema'], constraint=extraction_config['constraint'], use_file=extraction_config['use_file'], file_path=extraction_config['file_path'], truth=extraction_config['truth'], mode=extraction_config['mode'], update_case=extraction_config['update_case'], show_trajectory=extraction_config['show_trajectory'],
-                                                               construct=construct_config, iskg=True,config_name=args.config) # When 'construct' is provided, 'iskg' should be True to construct the knowledge graph.
+                                                               construct=construct_config, iskg=True,config_name=args.config)
         return
-    else:
-        print("please provide construct config in the yaml file.")
-
+    
     result, trajectory, _, _ = pipeline.get_extract_result(task=extraction_config['task'], instruction=extraction_config['instruction'], text=extraction_config['text'], output_schema=extraction_config['output_schema'], constraint=extraction_config['constraint'], use_file=extraction_config['use_file'], file_path=extraction_config['file_path'], truth=extraction_config['truth'], mode=extraction_config['mode'], update_case=extraction_config['update_case'], show_trajectory=extraction_config['show_trajectory'],config_name=args.config)
     return
 

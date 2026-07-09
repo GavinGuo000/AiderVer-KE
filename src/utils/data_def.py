@@ -2,7 +2,7 @@ from typing import Literal
 from models import *
 from .process import *
 # predefined processing logic for routine extraction tasks
-TaskType = Literal["NER", "RE", "EE", "Base"]
+TaskType = Literal["NER", "RE", "EE", "Triple", "Base"]
 
 class DataPoint:
     def __init__(self,
@@ -35,32 +35,57 @@ class DataPoint:
         self.result_trajectory = {}
         self.pred = ""
         
-        # 新增验证反馈相关属性
-        self.verification_feedback = None  # 验证器反馈信息
-        self.reprocessing_context = None   # 重新处理上下文
-        self.previous_errors = []          # 历史错误记录
+        # Verification feedback (from Verifier Agent)
+        self.verification_feedback = None
+        self.reprocessing_context = None
+        self.previous_errors = []
+        
+        # Probe feedback (from Probe Agent, MRD Section 5.4)
+        self.probe_feedback = []
+        self.probe_guidance = ""
+        
+        # Collaborative Memory integration (MRD Section 6)
+        self.collaborative_memory_context = ""
+        self.needs_reprocessing = False
+        self.reprocessing_reason = ""
+        self.reprocessing_suggestions = []
+        self.verification_result = None
+        self.verification_failure_details = None
         
     def set_verification_feedback(self, feedback):
-        """设置验证器反馈信息"""
+        """Set verifier feedback information"""
         self.verification_feedback = feedback
         if feedback and 'issues' in feedback:
             self.previous_errors.extend(feedback['issues'])
     
     def get_reprocessing_context(self):
-        """获取重新处理上下文"""
-        if not self.verification_feedback:
-            return ""
+        """Get reprocessing context combining verifier and probe feedback"""
+        context_parts = []
         
-        context = "\n=== 重新处理上下文信息 ===\n"
-        context += f"上次验证发现的问题: {self.verification_feedback.get('issues', [])}\n"
-        context += f"改进建议: {self.verification_feedback.get('suggestions', [])}\n"
-        context += f"置信度评分: {self.verification_feedback.get('confidence_score', 'N/A')}\n"
+        # Add verifier feedback
+        if self.verification_feedback:
+            context_parts.append("\n=== Verifier Feedback ===")
+            context_parts.append(f"Issues: {self.verification_feedback.get('issues', [])}")
+            context_parts.append(f"Suggestions: {self.verification_feedback.get('suggestions', [])}")
+            context_parts.append(f"Confidence: {self.verification_feedback.get('confidence_score', 'N/A')}")
         
+        # Add probe feedback guidance
+        if self.probe_guidance:
+            context_parts.append(f"\n=== Probe Agent Feedback ===")
+            context_parts.append(self.probe_guidance)
+        
+        # Add collaborative memory context
+        if self.collaborative_memory_context:
+            context_parts.append(f"\n=== Historical Error Memory ===")
+            context_parts.append(self.collaborative_memory_context)
+        
+        # Add historical errors
         if self.previous_errors:
-            context += f"历史错误记录: {self.previous_errors}\n"
+            context_parts.append(f"\nPrevious Errors: {self.previous_errors}")
         
-        context += "请根据以上反馈信息进行针对性改进。\n"
-        return context
+        if context_parts:
+            return "\n".join(context_parts)
+        return ""
 
     def set_constraint(self, constraint):
         self.constraint = constraint

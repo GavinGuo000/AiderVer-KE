@@ -22,22 +22,22 @@ agent:
     customized:
       agents: []
     enhanced:
-      agents: ["schema_agent", "aider_agent", "extraction_agent"]
+      agents: ["schema_agent", "aider_agent", "extraction_agent", "probe_agent", "verifier_agent"]
       schema_agent: get_deduced_schema
       aider_agent: enhance_with_knowledge
       extraction_agent: extract_information_with_case
-      reflection_agent: reflect_with_case
+      probe_agent: probe_extraction_quality
       verifier_agent: verify_extraction_result
     ablation_no_aider:
       schema_agent: get_deduced_schema
       extraction_agent: extract_information_with_case
-      reflection_agent: reflect_with_case
+      probe_agent: probe_extraction_quality
       verifier_agent: verify_extraction_result
     ablation_no_verifier:
       schema_agent: get_deduced_schema
       aider_agent: enhance_with_knowledge
       extraction_agent: extract_information_with_case
-      reflection_agent: reflect_with_case
+      probe_agent: probe_extraction_quality
     minimal:
       extraction_agent: extract_information_direct
       verifier_agent: verify_extraction_result

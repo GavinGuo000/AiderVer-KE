@@ -2,18 +2,21 @@ from typing import Literal
 from models import *
 from utils import *
 from modules import *
+from modules.collaborative_memory import CollaborativeMemory
 from construct import *
 
 class Pipeline:
     """
-    Pipeline Class - Main controller for OneKE knowledge extraction pipeline
+    Pipeline Class - Main controller for AiderVer-KE knowledge extraction pipeline (MRD Section 4)
     
-    This class coordinates multiple agents to complete knowledge extraction tasks, including:
-    - Schema Agent: Generate extraction schema
-    - Aider Agent: Provide external knowledge support
-    - Extraction Agent: Execute information extraction
-    - Reflection Agent: Reflect and improve results
-    - Verifier Agent: Verify extraction results
+    Five-agent collaborative architecture:
+    - Schema Agent: Generate extraction schema with closed-set constraints
+    - Aider Agent: Retrieve external knowledge for disambiguation
+    - Extraction Agent: Execute structured information extraction
+    - Probe Agent: Quality inspection and defect feedback generation
+    - Verifier Agent: Final verification with triple-check rules
+    
+    Collaborative Memory: Cross-agent shared error experience pool
     """
     
     def __init__(self, llm: BaseEngine):
@@ -25,10 +28,11 @@ class Pipeline:
         """
         self.llm = llm
         self.case_repo = CaseRepositoryHandler(llm = llm)
+        self.collaborative_memory = CollaborativeMemory()
         self.schema_agent = SchemaAgent(llm = llm)
         self.aider_agent = AiderAgent(llm = llm, case_repo = self.case_repo)
         self.extraction_agent = ExtractionAgent(llm = llm, case_repo = self.case_repo)
-        self.reflection_agent = ReflectionAgent(llm = llm, case_repo = self.case_repo)
+        self.probe_agent = ProbeAgent(llm = llm, case_repo = self.case_repo)
         self.verifier_agent = VerifierAgent(llm = llm, case_repo = self.case_repo)
 
     def __should_use_aider_agent(self, data: DataPoint):
@@ -131,15 +135,15 @@ Please return the judgment result in JSON format:
         Returns:
             dict: Sorted processing methods
         """
-        # Base process order
-        base_order = ["schema_agent", "extraction_agent", "reflection_agent", "verifier_agent"]
+        # Base process order (MRD Section 4.2: Schema → Extraction → Probe → Verifier)
+        base_order = ["schema_agent", "extraction_agent", "probe_agent", "verifier_agent"]
         
         # Ensure method is a dictionary
         if not isinstance(method, dict):
             method = {
                 "schema_agent": "get_default_schema",
                 "extraction_agent": "extract_information_direct",
-                "reflection_agent": "reflect_with_case",
+                "probe_agent": "probe_extraction_quality",
                 "verifier_agent": "verify_extraction_result"
             }
         
@@ -147,8 +151,8 @@ Please return the judgment result in JSON format:
         current_mode = mode
         
         if current_mode == "enhanced":
-            # Enhanced mode: complete agent workflow
-            default_order = ["schema_agent", "aider_agent", "extraction_agent", "reflection_agent", "verifier_agent"]
+            # Enhanced mode: complete agent workflow (MRD full pipeline)
+            default_order = ["schema_agent", "aider_agent", "extraction_agent", "probe_agent", "verifier_agent"]
         elif current_mode == "ablation_no_aider":
             # Ablation mode: force not using aider_agent
             default_order = base_order
@@ -158,7 +162,7 @@ Please return the judgment result in JSON format:
             print("ablation_no_aider mode: aider_agent forcibly removed")
         elif current_mode == "ablation_no_verifier":
             # Ablation mode: based on enhanced mode but remove verifier_agent
-            default_order = ["schema_agent", "aider_agent", "extraction_agent", "reflection_agent"]
+            default_order = ["schema_agent", "aider_agent", "extraction_agent", "probe_agent"]
             # Ensure verifier_agent is not added
             if "verifier_agent" in method:
                 del method["verifier_agent"]
@@ -169,13 +173,13 @@ Please return the judgment result in JSON format:
                 if self.__should_use_aider_agent(data):
                     method["aider_agent"] = "enhance_with_knowledge"
                     # If aider_agent is needed, insert it before extraction_agent
-                    default_order = ["schema_agent", "aider_agent", "extraction_agent", "reflection_agent", "verifier_agent"]
+                    default_order = ["schema_agent", "aider_agent", "extraction_agent", "probe_agent", "verifier_agent"]
                 else:
                     # Workflow without aider_agent
                     default_order = base_order
             else:
                 # If aider_agent is explicitly specified, use complete workflow
-                default_order = ["schema_agent", "aider_agent", "extraction_agent", "reflection_agent", "verifier_agent"]
+                default_order = ["schema_agent", "aider_agent", "extraction_agent", "probe_agent", "verifier_agent"]
         
         # Set default methods
         if "schema_agent" not in method:
@@ -184,8 +188,8 @@ Please return the judgment result in JSON format:
             method["schema_agent"] = "get_retrieved_schema"
         if "extraction_agent" not in method:
             method["extraction_agent"] = "extract_information_direct"
-        if "reflection_agent" not in method:
-            method["reflection_agent"] = "reflect_with_case"
+        if "probe_agent" not in method:
+            method["probe_agent"] = "probe_extraction_quality"
         if "verifier_agent" not in method:
             method["verifier_agent"] = "verify_extraction_result"
             
@@ -271,6 +275,14 @@ Please return the judgment result in JSON format:
         frontend_schema = ""
         frontend_res = ""
         reprocessing_attempts = 0
+        
+        # Inject collaborative memory context for Extraction Agent (MRD Section 6)
+        memory_context = self.collaborative_memory.get_error_summary_for_extraction(
+            task_type=task, text=text
+        )
+        if memory_context:
+            data.collaborative_memory_context = memory_context
+            print(f"[CollaborativeMemory] Injected historical error context")
 
         # Main processing loop, supports reprocessing
         while reprocessing_attempts <= max_reprocessing_attempts:
@@ -296,7 +308,7 @@ Please return the judgment result in JSON format:
                     frontend_schema = data.print_schema
                     print_schema = True
             
-            # Check if reprocessing is needed
+            # Check if reprocessing is needed (MRD Section 4.2: verification failure triggers re-extraction)
             if hasattr(data, 'needs_reprocessing') and data.needs_reprocessing and reprocessing_attempts < max_reprocessing_attempts:
                 print(f"\nReprocessing needed, reason: {data.reprocessing_reason}")
                 print(f"Suggestions: {data.reprocessing_suggestions}")
@@ -318,31 +330,31 @@ Please return the judgment result in JSON format:
                 has_completeness_issues = any('missed' in str(issue).lower() or 'incomplete' in str(issue).lower() for issue in issues)
                 
                 if has_extraction_issues or has_type_issues:
-                    # Severe issues: restart from extraction_agent
-                    restart_agents = ["extraction_agent", "reflection_agent", "verifier_agent"]
+                    # Severe issues: restart from extraction_agent (MRD: feedback loop back to extraction)
+                    restart_agents = ["extraction_agent", "probe_agent", "verifier_agent"]
                     print(f"[REPROCESSING] Severe issues detected, restarting from extraction_agent")
                 elif has_completeness_issues:
-                    # Completeness issues: restart from reflection_agent
-                    restart_agents = ["reflection_agent", "verifier_agent"]
-                    print(f"[REPROCESSING] Completeness issues detected, restarting from reflection_agent")
+                    # Completeness issues: restart from probe_agent
+                    restart_agents = ["probe_agent", "verifier_agent"]
+                    print(f"[REPROCESSING] Completeness issues detected, restarting from probe_agent")
                 else:
                     # Other issues: re-verify only
                     restart_agents = ["verifier_agent"]
                     print(f"[REPROCESSING] Minor issues detected, re-verifying only")
-                    
-                    # Update processing method configuration
-                    sorted_process_method = {key: sorted_process_method[key] for key in restart_agents if key in sorted_process_method}
-                    
-                    # Record reprocessing information
-                    data.update_trajectory("reprocessing_decision", {
-                        "attempt": reprocessing_attempts,
-                        "issues_detected": issues,
-                        "restart_strategy": restart_agents,
-                        "has_extraction_issues": has_extraction_issues,
-                        "has_type_issues": has_type_issues,
-                        "has_completeness_issues": has_completeness_issues
-                    })
-                    continue
+                
+                # Update processing method configuration
+                sorted_process_method = {key: sorted_process_method[key] for key in restart_agents if key in sorted_process_method}
+                
+                # Record reprocessing information
+                data.update_trajectory("reprocessing_decision", {
+                    "attempt": reprocessing_attempts,
+                    "issues_detected": issues,
+                    "restart_strategy": restart_agents,
+                    "has_extraction_issues": has_extraction_issues,
+                    "has_type_issues": has_type_issues,
+                    "has_completeness_issues": has_completeness_issues
+                })
+                continue
             else:
                 break
 
@@ -416,9 +428,68 @@ Please return the judgment result in JSON format:
                     else:
                         data.truth = extract_json_dict(truth)
                 self.case_repo.update_case(data)
+        
+        # Persist extraction session to Collaborative Memory (MRD Section 6)
+        self._persist_to_collaborative_memory(data, task, text, reprocessing_attempts)
 
         # Return results
         result = data.pred
         trajectory = data.get_result_trajectory()
 
         return result, trajectory, frontend_schema, frontend_res
+
+    def _persist_to_collaborative_memory(self, data: DataPoint, task: str, text: str, reprocessing_attempts: int):
+        """
+        Persist extraction session results to Collaborative Memory (MRD Section 6)
+        
+        Records:
+        1. Extraction errors and probe feedback for failed/low-quality extractions
+        2. Complete extraction session summary for system self-evolution
+        
+        Args:
+            data: DataPoint with all processing results
+            task: Task type
+            text: Original input text
+            reprocessing_attempts: Number of reprocessing attempts made
+        """
+        try:
+            # Record probe feedback if available
+            if hasattr(data, 'probe_feedback') and data.probe_feedback:
+                self.collaborative_memory.record_probe_feedback(
+                    task_type=task,
+                    probe_feedback_list=data.probe_feedback
+                )
+            
+            # Record extraction errors if verification found issues
+            if hasattr(data, 'verification_result') and data.verification_result:
+                verification_result = data.verification_result
+                is_consistent = verification_result.get("is_consistent", True)
+                confidence = verification_result.get("confidence_score", 1.0)
+                
+                # Only record errors for failed or low-confidence extractions
+                if not is_consistent or confidence < 0.8:
+                    probe_feedback = {}
+                    if hasattr(data, 'probe_feedback') and data.probe_feedback:
+                        probe_feedback = data.probe_feedback[0] if data.probe_feedback else {}
+                    
+                    self.collaborative_memory.record_extraction_errors(
+                        task_type=task,
+                        text=text,
+                        extraction_result=data.pred,
+                        probe_feedback=probe_feedback,
+                        verification_result=verification_result
+                    )
+            
+            # Record complete extraction session
+            self.collaborative_memory.record_extraction_session(
+                task_type=task,
+                text=text,
+                extraction_result=data.result_list[0] if data.result_list else {},
+                final_result=data.pred,
+                reprocessing_count=reprocessing_attempts
+            )
+            
+            print(f"[CollaborativeMemory] Session persisted successfully")
+            
+        except Exception as e:
+            print(f"[CollaborativeMemory] Failed to persist session: {e}")
