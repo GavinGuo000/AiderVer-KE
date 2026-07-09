@@ -246,19 +246,6 @@ extraction:
 
 Long texts are automatically chunked based on `chunk_token_limit` (default: 1024 tokens).
 
-## 🌐 Knowledge Graph Construction
-
-AiderVer-KE supports direct construction of knowledge graphs in Neo4j from extraction results:
-
-```yaml
-construct:
-  database: "neo4j"
-  url: "bolt://localhost:7687"
-  username: "neo4j"
-  password: "your-password"
-```
-
-When the `construct` section is present in config, extraction results are automatically converted to Cypher statements and loaded into the specified Neo4j database.
 
 ## 📊 Supported Task Types
 
